@@ -5,6 +5,7 @@ import { EquipmentItem, KitDef } from "@/types";
 import { useAuth } from "@/lib/auth-context";
 import { BlockoutModal } from "@/components/BlockoutModal";
 import { EquipmentFormModal } from "@/components/EquipmentFormModal";
+import { KitFormModal } from "@/components/KitFormModal";
 import {
   Camera,
   Plus,
@@ -42,6 +43,11 @@ export default function AdminInventarioPage() {
   // Modal Crear / Editar Equipamiento
   const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
   const [equipmentToEdit, setEquipmentToEdit] = useState<EquipmentItem | null>(null);
+
+  // Modal Crear / Editar Kit
+  const [isKitModalOpen, setIsKitModalOpen] = useState(false);
+  const [kitToEdit, setKitToEdit] = useState<KitDef | null>(null);
+
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   const fetchData = () => {
@@ -99,6 +105,30 @@ export default function AdminInventarioPage() {
     }
   };
 
+  const handleDeleteKit = async (kit: KitDef) => {
+    if (
+      !confirm(
+        `¿Confirma que desea eliminar el kit predefinido "${kit.name}"? (Los equipos individuales seguirán en el inventario).`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/kits?id=${kit.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "No se pudo eliminar el kit");
+        return;
+      }
+      setActionMessage(`Kit "${kit.name}" eliminado correctamente.`);
+      setTimeout(() => setActionMessage(null), 3000);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || "Error al conectar con el servidor");
+    }
+  };
+
   const filteredEquipments = equipments.filter((eq) => {
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -149,22 +179,34 @@ export default function AdminInventarioPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Botón Crear Nuevo Equipo (Exclusivo Superadmin) */}
+          {/* Botones Crear Equipo y Crear Kit (Exclusivo Superadmin) */}
           {isSuperAdmin ? (
-            <button
-              onClick={() => {
-                setEquipmentToEdit(null);
-                setIsEquipmentModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Nuevo Equipamiento</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setEquipmentToEdit(null);
+                  setIsEquipmentModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Equipamiento</span>
+              </button>
+              <button
+                onClick={() => {
+                  setKitToEdit(null);
+                  setIsKitModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-xs shadow-2xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Nuevo Kit</span>
+              </button>
+            </>
           ) : (
             <span
               className="text-[11px] text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200"
-              title="Para dar de alta, editar o eliminar equipamientos, cambie al rol Superadmin en la barra superior"
+              title="Para dar de alta, editar o eliminar equipamientos o kits, cambie al rol Superadmin en la barra superior"
             >
               Altas/Bajas: Rol Superadmin
             </span>
@@ -348,39 +390,99 @@ export default function AdminInventarioPage() {
         </>
       ) : (
         /* GESTIÓN DE KITS */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {kits.map((kit) => (
-            <div key={kit.id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                  Kit Predefinido
-                </span>
-                <h3 className="font-bold text-slate-900 text-base mt-2">{kit.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">{kit.description}</p>
-              </div>
-
-              <div className="border border-slate-100 rounded-xl p-3 bg-slate-50 space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-700 block">Equipos incluidos:</span>
-                {kit.items.map((i, idx) => (
-                  <div key={idx} className="flex justify-between text-xs text-slate-600">
-                    <span>{i.equipment?.name || i.equipmentId}</span>
-                    <span className="font-bold text-slate-800">x{i.quantity}</span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => {
-                  setBlockoutEqId(undefined);
-                  setIsBlockoutModalOpen(true);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 text-xs font-semibold transition"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Bloquear Kit Completo</span>
-              </button>
+        <div className="space-y-4">
+          {kits.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+              <PackageCheck className="w-10 h-10 text-slate-300 mx-auto" />
+              <h3 className="font-bold text-slate-800 text-sm">No hay kits predefinidos creados</h3>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => {
+                    setKitToEdit(null);
+                    setIsKitModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Crear Primer Kit</span>
+                </button>
+              )}
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {kits.map((kit) => (
+                <div
+                  key={kit.id}
+                  className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                          Kit Predefinido
+                        </span>
+                        {kit.isActive === false && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                            Oculto
+                          </span>
+                        )}
+                      </div>
+
+                      {isSuperAdmin && (
+                        <div className="inline-flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => {
+                              setKitToEdit(kit);
+                              setIsKitModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 text-indigo-700 transition"
+                            title="Editar Kit (Superadmin)"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKit(kit)}
+                            className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 transition"
+                            title="Eliminar Kit (Superadmin)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base">{kit.name}</h3>
+                      <p className="text-xs text-slate-500 mt-1">{kit.description}</p>
+                    </div>
+
+                    <div className="border border-slate-100 rounded-xl p-3 bg-slate-50 space-y-1.5">
+                      <span className="text-[11px] font-bold text-slate-700 block">
+                        Equipos incluidos ({kit.items.length}):
+                      </span>
+                      {kit.items.map((i, idx) => (
+                        <div key={idx} className="flex justify-between text-xs text-slate-600 gap-2">
+                          <span className="truncate">{i.equipment?.name || i.equipmentId}</span>
+                          <span className="font-bold text-slate-800 shrink-0">x{i.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setBlockoutEqId(undefined);
+                      setIsBlockoutModalOpen(true);
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 text-xs font-semibold transition"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Bloquear Kit Completo</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -452,6 +554,23 @@ export default function AdminInventarioPage() {
             equipmentToEdit
               ? `Equipo ${equipmentToEdit.code} actualizado con éxito.`
               : "Nuevo equipamiento creado e incorporado al inventario."
+          );
+          setTimeout(() => setActionMessage(null), 3500);
+          fetchData();
+        }}
+      />
+
+      {/* MODAL CREAR / EDITAR KIT */}
+      <KitFormModal
+        isOpen={isKitModalOpen}
+        onClose={() => setIsKitModalOpen(false)}
+        kitToEdit={kitToEdit}
+        equipments={equipments}
+        onSuccess={() => {
+          setActionMessage(
+            kitToEdit
+              ? `Kit "${kitToEdit.name}" actualizado con éxito.`
+              : "Nuevo kit predefinido creado con éxito."
           );
           setTimeout(() => setActionMessage(null), 3500);
           fetchData();

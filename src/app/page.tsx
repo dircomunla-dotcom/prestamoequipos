@@ -145,7 +145,7 @@ export default function CatalogPage() {
       </div>
 
       {/* SECCIÓN KITS PREDEFINIDOS */}
-      {kits.length > 0 && (
+      {kits.filter((k) => k.isActive !== false).length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function CatalogPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {kits.map((kit) => (
+            {kits.filter((k) => k.isActive !== false).map((kit) => (
               <div
                 key={kit.id}
                 className="bg-white rounded-xl p-4 border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-300 transition flex flex-col justify-between space-y-3"

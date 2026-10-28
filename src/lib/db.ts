@@ -1030,7 +1030,109 @@ class Database {
 
   // KITS
   public getKits(): KitDef[] {
-    return this.ensureLoaded().kits;
+    const db = this.ensureLoaded();
+    return db.kits.map((kit) => ({
+      ...kit,
+      items: kit.items.map((item) => {
+        const eq = db.equipments.find((e) => e.id === item.equipmentId || e.code === item.equipmentId);
+        return {
+          ...item,
+          equipmentId: eq?.id || item.equipmentId,
+          equipment: eq || item.equipment,
+        };
+      }),
+    }));
+  }
+
+  public getKitById(id: string): KitDef | undefined {
+    return this.getKits().find((k) => k.id === id || k.slug === id);
+  }
+
+  public createKit(data: {
+    name: string;
+    description: string;
+    isActive?: boolean;
+    items: Array<{ equipmentId: string; quantity: number }>;
+  }): KitDef {
+    const db = this.ensureLoaded();
+    const slugBase = data.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const uniqueId = `kit-${Date.now()}`;
+    const slug = slugBase ? `${slugBase}-${Date.now().toString().slice(-4)}` : uniqueId;
+
+    const hydratedItems = data.items.map((it) => {
+      const eq = db.equipments.find((e) => e.id === it.equipmentId || e.code === it.equipmentId);
+      return {
+        equipmentId: eq?.id || it.equipmentId,
+        equipment: eq,
+        quantity: it.quantity,
+      };
+    });
+
+    const newKit: KitDef = {
+      id: uniqueId,
+      name: data.name,
+      slug,
+      description: data.description,
+      isActive: data.isActive ?? true,
+      items: hydratedItems,
+    };
+
+    db.kits.push(newKit);
+    this.persist();
+    return newKit;
+  }
+
+  public updateKit(
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      isActive: boolean;
+      items: Array<{ equipmentId: string; quantity: number }>;
+    }>
+  ): KitDef | null {
+    const db = this.ensureLoaded();
+    const idx = db.kits.findIndex((k) => k.id === id);
+    if (idx === -1) return null;
+
+    const existing = db.kits[idx];
+    const updatedItems = data.items
+      ? data.items.map((it) => {
+          const eq = db.equipments.find((e) => e.id === it.equipmentId || e.code === it.equipmentId);
+          return {
+            equipmentId: eq?.id || it.equipmentId,
+            equipment: eq,
+            quantity: it.quantity,
+          };
+        })
+      : existing.items;
+
+    db.kits[idx] = {
+      ...existing,
+      name: data.name !== undefined ? data.name : existing.name,
+      description: data.description !== undefined ? data.description : existing.description,
+      isActive: data.isActive !== undefined ? data.isActive : existing.isActive,
+      items: updatedItems,
+    };
+
+    this.persist();
+    return this.getKitById(id) || db.kits[idx];
+  }
+
+  public deleteKit(id: string): boolean {
+    const db = this.ensureLoaded();
+    const lenBefore = db.kits.length;
+    db.kits = db.kits.filter((k) => k.id !== id);
+    if (db.kits.length !== lenBefore) {
+      this.persist();
+      return true;
+    }
+    return false;
   }
 
   // PEDIDOS (LOANS)
