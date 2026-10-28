@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 
 // Formatos permitidos
 const ALLOWED_MIME_TYPES = [
@@ -47,31 +45,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Asegurar directorio public/uploads
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.promises.mkdir(uploadDir, { recursive: true });
-
-    // Sanitizar nombre de archivo
-    const originalName = file.name || "imagen.jpg";
-    const extension = path.extname(originalName) || ".jpg";
-    const cleanBaseName = path
-      .basename(originalName, extension)
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/gi, "_")
-      .slice(0, 30);
-
-    const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const finalFileName = `${cleanBaseName || "equipo"}_${uniqueSuffix}${extension.toLowerCase()}`;
-    const filePath = path.join(uploadDir, finalFileName);
-
-    await fs.promises.writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/${finalFileName}`;
+    // Convertir a Data URI Base64 para que la foto quede persistida directamente dentro de db.json
+    // y no se pierda nunca cuando el servidor reemplace la carpeta public/ en nuevos despliegues
+    const base64Data = buffer.toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64Data}`;
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
-      fileName: finalFileName,
+      url: dataUrl,
+      fileName: file.name || "imagen",
       size: file.size,
     });
   } catch (error: any) {

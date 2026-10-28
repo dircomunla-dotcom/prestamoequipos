@@ -468,25 +468,29 @@ export function EquipmentFormModal({
                   <div className="flex-1 min-w-0 text-xs">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-semibold text-slate-800 truncate">
-                        {formData.imageUrl.startsWith("/uploads/")
+                        {formData.imageUrl.startsWith("/uploads/") || formData.imageUrl.startsWith("data:image/")
                           ? "Imagen alojada en el servidor"
                           : "Imagen vinculada por URL web"}
                       </span>
                       <span
                         className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          formData.imageUrl.startsWith("/uploads/")
+                          formData.imageUrl.startsWith("/uploads/") || formData.imageUrl.startsWith("data:image/")
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                             : "bg-blue-50 text-blue-700 border border-blue-200"
                         }`}
                       >
-                        {formData.imageUrl.startsWith("/uploads/") ? "Servidor Local" : "Web Externa"}
+                        {formData.imageUrl.startsWith("/uploads/") || formData.imageUrl.startsWith("data:image/")
+                          ? "Servidor Local"
+                          : "Web Externa"}
                       </span>
                     </div>
                     <p
                       className="text-[10px] text-slate-400 font-mono truncate mt-0.5"
-                      title={formData.imageUrl}
+                      title={formData.imageUrl.startsWith("data:image/") ? "Imagen embebida en base de datos" : formData.imageUrl}
                     >
-                      {formData.imageUrl}
+                      {formData.imageUrl.startsWith("data:image/")
+                        ? "Imagen guardada directamente en la base de datos"
+                        : formData.imageUrl}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

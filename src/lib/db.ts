@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import {
   EquipmentItem,
@@ -41,9 +42,27 @@ export interface DatabaseSchema {
   settings: Record<string, any>;
 }
 
-const DATA_DIR = process.env.DATA_DIR
-  ? path.resolve(process.env.DATA_DIR)
-  : path.join(process.cwd(), "data");
+function resolvePersistentDataDir(): string {
+  if (process.env.DATA_DIR) {
+    return path.resolve(process.env.DATA_DIR);
+  }
+  // En servidores Linux (Hostinger), cada deploy por Git reemplaza la carpeta del proyecto (process.cwd()).
+  // Guardamos db.json en el directorio home del usuario (~/.prestamoequipos_data) para que sobreviva a nuevos deploys.
+  if (process.platform !== "win32") {
+    try {
+      const homeDataDir = path.join(os.homedir(), ".prestamoequipos_data");
+      if (!fs.existsSync(homeDataDir)) {
+        fs.mkdirSync(homeDataDir, { recursive: true });
+      }
+      return homeDataDir;
+    } catch {
+      // Fallback si el homedir no tiene permisos de escritura
+    }
+  }
+  return path.join(process.cwd(), "data");
+}
+
+const DATA_DIR = resolvePersistentDataDir();
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
 // Función auxiliar para generar fechas relativas al día de hoy

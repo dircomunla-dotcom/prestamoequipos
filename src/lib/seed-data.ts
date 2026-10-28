@@ -170,7 +170,7 @@ export const INITIAL_EQUIPMENTS = [
     status: "AVAILABLE" as const,
     requiresSpecialApproval: true,
     staffOnly: false,
-    imageUrl: "https://images.unsplash.com/photo-1589872765870-7612662c9339?w=800&auto=format&fit=crop&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80",
     accessories: [
       { name: "Fuente de alimentación 12V", quantity: 1, isOptional: false },
       { name: "Baterías tipo LP-E6", quantity: 2, isOptional: false },
