@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: unla-prestamo-audiovisual
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_SECRET=unla-secret-jwt-key-cultura-comunicacion-2026
+      - ALLOWED_GOOGLE_DOMAIN=unla.edu.ar
+      - DATABASE_URL=file:/app/data/dev.db
+    volumes:
+      - unla_data:/app/data
+
+volumes:
+  unla_data:

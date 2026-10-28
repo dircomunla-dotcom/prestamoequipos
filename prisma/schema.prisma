@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String
+  email          String         @unique
+  role           String         @default("SOLICITANTE") // SOLICITANTE, ADMIN, SUPERADMIN
+  dni            String?
+  phone          String?
+  affiliation    String?        @default("DOCENTE") // DOCENTE, NODOCENTE, ESTUDIANTE, GRADUADO, AUTORIDAD, OTRO
+  departmentId   String?
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  avatarUrl      String?
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  loanRequests   LoanRequest[]
+  blockouts      Blockout[]
+  checkRecords   CheckRecord[]
+  historyEntries RequestHistory[]
+  auditLogs      AuditLog[]
+}
+
+model Department {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  code         String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+
+  users        User[]
+  loanRequests LoanRequest[]
+}
+
+model Category {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  iconName    String?     @default("Camera")
+  description String?
+
+  equipment   Equipment[]
+}
+
+model Equipment {
+  id                     String         @id @default(cuid())
+  name                   String
+  code                   String         @unique // ej. CAM-001
+  brand                  String
+  model                  String
+  serialNumber           String?
+  categoryId             String
+  category               Category       @relation(fields: [categoryId], references: [id])
+  totalUnits             Int            @default(1)
+  description            String
+  accessoriesSummary     String?
+  replacementValue       Float?         @default(0)
+  status                 String         @default("AVAILABLE") // AVAILABLE, IN_LOAN, MAINTENANCE, OUT_OF_SERVICE
+  requiresSpecialApproval Boolean        @default(false)
+  staffOnly              Boolean        @default(false)
+  imageUrl               String?
+  notes                  String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  accessories            Accessory[]
+  loanItems              LoanItem[]
+  blockoutItems          BlockoutItem[]
+  kitItems               KitItem[]
+}
+
+model Accessory {
+  id          String    @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  name        String
+  quantity    Int       @default(1)
+  isOptional  Boolean   @default(false)
+}
+
+model Kit {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  items       KitItem[]
+}
+
+model KitItem {
+  id          String    @id @default(cuid())
+  kitId       String
+  kit         Kit       @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  quantity    Int       @default(1)
+}
+
+model LoanRequest {
+  id                     String           @id @default(cuid())
+  code                   String           @unique // ej. PRE-2026-0042
+  userId                 String
+  user                   User             @relation(fields: [userId], references: [id])
+  departmentId           String
+  department             Department       @relation(fields: [departmentId], references: [id])
+  
+  // Solicitante snapshot
+  applicantAffiliation   String
+  applicantDni           String
+  applicantPhone         String
+
+  // Responsable que avala (requerido si estudiante)
+  sponsorName            String?
+  sponsorRole            String?
+  sponsorEmail           String?
+
+  // Retiro y Devolución
+  pickupPersonName       String
+  pickupPersonDni        String
+  pickupPersonPhone      String
+  isPickupApplicant      Boolean          @default(true)
+
+  returnPersonName       String
+  returnPersonDni        String
+  returnPersonPhone      String
+  isReturnPickupSame     Boolean          @default(true)
+
+  // Fechas y horarios
+  startDate              DateTime
+  endDate                DateTime
+  pickupTime             String           @default("10:00")
+  returnTime             String           @default("16:00")
+
+  // Uso del equipamiento
+  projectName            String
+  projectDescription     String
+  usageLocationType      String           @default("INTERNAL") // INTERNAL, EXTERNAL
+  usageLocationDetails   String
+  usageType              String           // registro de evento, entrevista, producción audiovisual, streaming, docencia, institucional, otro
+  operatorsCount         Int?             @default(1)
+  operatorsExperience    String?
+  requiresTravelWarning  Boolean          @default(false)
+  specialNotes           String?
+
+  // Estado
+  status                 String           @default("PENDING") // PENDING, APPROVED, IN_LOAN, RETURNED, RETURNED_OBSERVED, REJECTED, CANCELLED, OVERDUE
+  rejectionReason        String?
+  adminNotes             String?
+  termsAcceptedAt        DateTime         @default(now())
+
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  items                  LoanItem[]
+  checkRecords           CheckRecord[]
+  history                RequestHistory[]
+}
+
+model LoanItem {
+  id                String      @id @default(cuid())
+  loanRequestId     String
+  loanRequest       LoanRequest @relation(fields: [loanRequestId], references: [id], onDelete: Cascade)
+  equipmentId       String
+  equipment         Equipment   @relation(fields: [equipmentId], references: [id])
+  quantityRequested Int         @default(1)
+  quantityApproved  Int         @default(1)
+}
+
+model CheckRecord {
+  id                 String      @id @default(cuid())
+  loanRequestId      String
+  loanRequest        LoanRequest @relation(fields: [loanRequestId], references: [id], onDelete: Cascade)
+  type               String      // PICKUP, RETURN
+  performedById      String
+  performedBy        User        @relation(fields: [performedById], references: [id])
+  performedAt        DateTime    @default(now())
+  personName         String
+  personDni          String
+  verifiedIdentity   Boolean     @default(true)
+  checklistJson      String      // JSON con el estado de cada ítem y accesorio (ok, detalle, faltante, dañado)
+  observations       String?
+  photosUrlsJson     String?     // URLs opcionales de fotos
+}
+
+model Blockout {
+  id            String         @id @default(cuid())
+  title         String
+  reason        String         // SECRETARIA_INTERNAL, INSTITUTIONAL_EVENT, SCHEDULED_MAINTENANCE, REPAIR, AUTHORITY_RESERVED, EXTERNAL_LOAN, OTHER
+  internalNotes String?
+  startDate     DateTime
+  endDate       DateTime
+  allDay        Boolean        @default(true)
+  isRecurring   Boolean        @default(false)
+  recurringRule String?        // Ej: TUESDAYS_10_14
+  createdById   String
+  createdBy     User           @relation(fields: [createdById], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  items         BlockoutItem[]
+}
+
+model BlockoutItem {
+  id              String    @id @default(cuid())
+  blockoutId      String
+  blockout        Blockout  @relation(fields: [blockoutId], references: [id], onDelete: Cascade)
+  equipmentId     String
+  equipment       Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  quantityBlocked Int       @default(1)
+}
+
+model RequestHistory {
+  id            String      @id @default(cuid())
+  loanRequestId String
+  loanRequest   LoanRequest @relation(fields: [loanRequestId], references: [id], onDelete: Cascade)
+  statusFrom    String?
+  statusTo      String
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  userName      String?
+  comment       String?
+  createdAt     DateTime    @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // CREATE, UPDATE, DELETE, STATUS_CHANGE, BLOCKOUT_CREATE, etc.
+  entityType  String   // LOAN, EQUIPMENT, BLOCKOUT, USER, SETTING
+  entityId    String
+  detailsJson String?
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  userName    String?
+  createdAt   DateTime @default(now())
+}
+
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}

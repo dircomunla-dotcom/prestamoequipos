@@ -1,0 +1,37 @@
+{
+  "name": "prestamoequipos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "enhanced-resolve": "^5.26.0",
+    "jiti": "^2.7.0",
+    "jspdf": "^2.5.2",
+    "lucide-react": "^1.16.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-merge": "^3.0.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.4.3",
+    "postcss": "^8.5.32",
+    "prisma": "^6.4.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
