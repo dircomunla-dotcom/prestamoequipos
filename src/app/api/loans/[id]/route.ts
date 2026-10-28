@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkAvailability } from "@/lib/availability";
-import { sendEmailNotification, getLoanApprovedEmail } from "@/lib/notifications";
+import {
+  sendEmailNotification,
+  getLoanApprovedEmail,
+  getLoanRejectedEmail,
+} from "@/lib/notifications";
 
 export async function GET(
   request: NextRequest,
@@ -90,7 +94,7 @@ export async function PATCH(
 
       // Notificación de aprobación
       const startFmt = new Date(loan.startDate).toLocaleDateString("es-AR");
-      sendEmailNotification({
+      await sendEmailNotification({
         to: loan.userEmail,
         subject: `¡Solicitud Aprobada! - ${loan.code} [UNLa]`,
         html: getLoanApprovedEmail(loan.code, loan.userName, loan.pickupTime, startFmt),
@@ -101,10 +105,11 @@ export async function PATCH(
     }
 
     if (action === "REJECT") {
+      const rejectionText = comment || "Pedido rechazado por la Secretaría.";
       const updated = db.updateLoanStatus(
         id,
         "REJECTED",
-        comment || "Pedido rechazado por la Secretaría.",
+        rejectionText,
         adminUser
       );
       if (updated) {
@@ -118,6 +123,13 @@ export async function PATCH(
         `Pedido ${loan.code} rechazado por ${adminUser?.name || "Administración"}. Motivo: ${comment}`,
         adminUser
       );
+
+      await sendEmailNotification({
+        to: loan.userEmail,
+        subject: `Actualización sobre tu Solicitud - ${loan.code} [UNLa]`,
+        html: getLoanRejectedEmail(loan.code, loan.userName, rejectionText),
+        type: "LOAN_REJECTED",
+      });
 
       return NextResponse.json({ loan: updated });
     }
@@ -193,7 +205,7 @@ export async function PATCH(
             status: l.status,
             startDate: l.startDate,
             endDate: l.endDate,
-            items: l.items.map((i) => ({ equipmentId: i.equipmentId, quantityApproved: i.quantityApproved })),
+            items: l.items.map((i) => ({ equipmentId: i.equipmentId, quantity: i.quantityApproved })),
           })),
           blockouts: blockouts.map((b) => ({
             id: b.id,

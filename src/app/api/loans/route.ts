@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { checkAvailability } from "@/lib/availability";
-import { sendEmailNotification, getLoanConfirmationEmail } from "@/lib/notifications";
+import {
+  sendEmailNotification,
+  getLoanConfirmationEmail,
+  getAdminNewLoanAlertEmail,
+} from "@/lib/notifications";
 import { z } from "zod";
 
 const createLoanSchema = z.object({
@@ -165,13 +169,33 @@ export async function POST(request: NextRequest) {
       { id: validated.userId, name: validated.userName }
     );
 
-    // 5. Enviar email de confirmación
+    // 5. Enviar email de confirmación al solicitante y aviso a la administración
     const startFormatted = new Date(validated.startDate).toLocaleDateString("es-AR");
     const endFormatted = new Date(validated.endDate).toLocaleDateString("es-AR");
-    sendEmailNotification({
+    await sendEmailNotification({
       to: validated.userEmail,
       subject: `Solicitud de Préstamo Recibida - ${newLoan.code} [UNLa]`,
       html: getLoanConfirmationEmail(newLoan.code, validated.userName, startFormatted, endFormatted),
+      type: "LOAN_CREATED",
+    });
+
+    const adminEmail = process.env.SMTP_USER || "dircomunla@gmail.com";
+    const itemsSummary = preparedItems
+      .map((i) => `${i.quantityRequested}x ${i.equipmentName || i.equipmentCode}`)
+      .join(", ");
+    await sendEmailNotification({
+      to: adminEmail,
+      subject: `[Nuevo Pedido ${newLoan.code}] ${validated.userName} - ${validated.departmentName}`,
+      html: getAdminNewLoanAlertEmail({
+        code: newLoan.code,
+        applicantName: validated.userName,
+        applicantEmail: validated.userEmail,
+        departmentName: validated.departmentName,
+        projectName: validated.projectName,
+        startDate: startFormatted,
+        endDate: endFormatted,
+        itemsSummary,
+      }),
       type: "LOAN_CREATED",
     });
 
