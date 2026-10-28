@@ -90,6 +90,15 @@ export function LoanFormModal({ isOpen, onClose, onSuccess }: LoanFormModalProps
       .catch(() => {});
   }, []);
 
+  // Sincronizar las fechas del Paso 1 con las fechas seleccionadas en el catálogo
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      startDate: startDate,
+      endDate: endDate,
+    }));
+  }, [startDate, endDate, isOpen]);
+
   // Actualizar datos al cambiar de usuario demo
   useEffect(() => {
     setFormData((prev) => ({

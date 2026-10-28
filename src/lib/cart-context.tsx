@@ -56,6 +56,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (Array.isArray(parsed)) setItems(parsed);
       } catch {}
     }
+    const savedDates = sessionStorage.getItem("unla_prestamos_dates");
+    if (savedDates) {
+      try {
+        const parsedDates = JSON.parse(savedDates);
+        if (parsedDates.start) setStartDate(parsedDates.start);
+        if (parsedDates.end) setEndDate(parsedDates.end);
+      } catch {}
+    }
   }, []);
 
   const saveItems = (newItems: CartItem[]) => {
@@ -122,6 +130,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const setDateRange = (start: string, end: string) => {
     setStartDate(start);
     setEndDate(end);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "unla_prestamos_dates",
+        JSON.stringify({ start, end })
+      );
+    }
   };
 
   const totalItemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
